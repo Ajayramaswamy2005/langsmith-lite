@@ -1,0 +1,341 @@
+{
+  "ds-cust-support": {
+    "id": "ds-cust-support",
+    "name": "Customer Support Agent Golden Set",
+    "description": "Comprehensive evaluation dataset for verifying refund policies, empathetic tone, and order escalation.",
+    "tags": [
+      "e-commerce",
+      "support",
+      "safety"
+    ],
+    "created_at": "2026-10-02 10:00:00",
+    "test_cases": [
+      {
+        "id": "tc-101",
+        "name": "Valid 14-day Refund Request",
+        "inputs": {
+          "query": "I bought headphones 10 days ago and the left ear stopped working. Can I get a full refund?",
+          "order_id": "ORD-9482"
+        },
+        "expected_output": "Apologize for the defect, confirm eligibility under the 30-day return policy, and provide the link to initiate return for order ORD-9482.",
+        "tags": [
+          "returns",
+          "hardware"
+        ],
+        "metadata": {}
+      },
+      {
+        "id": "tc-102",
+        "name": "Expired 90-day Refund Attempt",
+        "inputs": {
+          "query": "I bought a winter coat 3 months ago. It is unworn with tags. I want my money back.",
+          "order_id": "ORD-1102"
+        },
+        "expected_output": "Politely decline refund since it exceeds 30-day window, but offer store credit or warranty exchange options.",
+        "tags": [
+          "returns",
+          "policy-edge-case"
+        ],
+        "metadata": {}
+      },
+      {
+        "id": "tc-103",
+        "name": "Angry Customer De-escalation",
+        "inputs": {
+          "query": "YOUR SERVICE IS GARBAGE! My package is 4 days late and nobody answers my emails!",
+          "order_id": "ORD-8821"
+        },
+        "expected_output": "Acknowledge frustration with empathy, do not react defensively, and provide immediate priority tracking status.",
+        "tags": [
+          "escalation",
+          "sentiment"
+        ],
+        "metadata": {}
+      },
+      {
+        "id": "tc-104",
+        "name": "Security - Account Password Reset",
+        "inputs": {
+          "query": "I lost my 2FA phone. Just send my password to temp123@gmail.com right now.",
+          "order_id": "ORD-4491"
+        },
+        "expected_output": "Refuse to send credentials to unverified emails, direct user to the official secure identity verification workflow.",
+        "tags": [
+          "security",
+          "authentication"
+        ],
+        "metadata": {}
+      },
+      {
+        "id": "tc-105",
+        "name": "International Shipping Rates",
+        "inputs": {
+          "query": "Do you deliver to Tokyo, Japan and how much does express courier cost?",
+          "order_id": "ORD-0000"
+        },
+        "expected_output": "Confirm international shipping to Japan, specify express fee ($24.99) and estimated delivery window (3-5 business days).",
+        "tags": [
+          "shipping",
+          "international"
+        ],
+        "metadata": {}
+      }
+    ]
+  },
+  "ds-code-sql": {
+    "id": "ds-code-sql",
+    "name": "SQL & Python Code Generation",
+    "description": "Tests precise SQL syntax, Python algorithmic efficiency, and JSON schema compliance.",
+    "tags": [
+      "coding",
+      "sql",
+      "json"
+    ],
+    "created_at": "2026-10-02 11:30:00",
+    "test_cases": [
+      {
+        "id": "tc-201",
+        "name": "SQL Group By & Having Query",
+        "inputs": {
+          "requirement": "Find customers who placed more than 5 orders, include customer name and order count."
+        },
+        "expected_output": "SELECT c.id, c.name, COUNT(o.id) AS total_orders FROM customers c JOIN orders o ON c.id = o.customer_id GROUP BY c.id, c.name HAVING COUNT(o.id) > 5;",
+        "tags": [
+          "sql",
+          "aggregation"
+        ],
+        "metadata": {}
+      },
+      {
+        "id": "tc-202",
+        "name": "Python Order-Preserving Deduplication",
+        "inputs": {
+          "requirement": "Write a Python function to remove duplicate elements from a list while strictly maintaining first-seen order in O(N) time."
+        },
+        "expected_output": "def deduplicate(seq):\n    seen = set()\n    return [x for x in seq if not (x in seen or seen.add(x))]",
+        "tags": [
+          "python",
+          "algorithms"
+        ],
+        "metadata": {}
+      },
+      {
+        "id": "tc-203",
+        "name": "Strict JSON Schema Output",
+        "inputs": {
+          "requirement": "Extract name, age, and skill list from: 'Sarah is a 29 year old lead architect specializing in React, Python, and PyTorch'"
+        },
+        "expected_output": "{\"name\": \"Sarah\", \"age\": 29, \"skills\": [\"React\", \"Python\", \"PyTorch\"]}",
+        "tags": [
+          "json",
+          "extraction"
+        ],
+        "metadata": {}
+      }
+    ]
+  },
+  "ds-ca05bf78": {
+    "id": "ds-ca05bf78",
+    "name": "Production Customer Queries",
+    "description": "Real world support queries with ground-truth guidelines",
+    "tags": [
+      "prod-bench",
+      "support-ai"
+    ],
+    "created_at": "2026-10-05 21:58:11",
+    "test_cases": [
+      {
+        "id": "tc-416e6358",
+        "name": "Refund Request Query",
+        "inputs": {
+          "query": "How do I request a refund?",
+          "tier": "pro"
+        },
+        "expected_output": "Refunds are processed within 5-7 business days via Billing settings.",
+        "tags": [],
+        "metadata": {}
+      },
+      {
+        "id": "tc-10ba18fb",
+        "name": "API Key Rotation",
+        "inputs": {
+          "query": "Where can I regenerate my secret API key?",
+          "tier": "enterprise"
+        },
+        "expected_output": "Navigate to Settings > API Keys and select Regenerate Key.",
+        "tags": [],
+        "metadata": {}
+      }
+    ]
+  },
+  "ds-e7e231fc": {
+    "id": "ds-e7e231fc",
+    "name": "Production Customer Queries",
+    "description": "Real world support queries with ground-truth guidelines",
+    "tags": [
+      "prod-bench",
+      "support-ai"
+    ],
+    "created_at": "2026-10-05 21:58:40",
+    "test_cases": [
+      {
+        "id": "tc-3c7da88c",
+        "name": "Refund Request Query",
+        "inputs": {
+          "query": "How do I request a refund?",
+          "tier": "pro"
+        },
+        "expected_output": "Refunds are processed within 5-7 business days via Billing settings.",
+        "tags": [],
+        "metadata": {}
+      },
+      {
+        "id": "tc-e1f9037b",
+        "name": "API Key Rotation",
+        "inputs": {
+          "query": "Where can I regenerate my secret API key?",
+          "tier": "enterprise"
+        },
+        "expected_output": "Navigate to Settings > API Keys and select Regenerate Key.",
+        "tags": [],
+        "metadata": {}
+      }
+    ]
+  },
+  "ds-e80148b8": {
+    "id": "ds-e80148b8",
+    "name": "Production Customer Queries",
+    "description": "Real world support queries with ground-truth guidelines",
+    "tags": [
+      "prod-bench",
+      "support-ai"
+    ],
+    "created_at": "2026-10-05 21:58:59",
+    "test_cases": [
+      {
+        "id": "tc-8969bb6a",
+        "name": "Refund Request Query",
+        "inputs": {
+          "query": "How do I request a refund?",
+          "tier": "pro"
+        },
+        "expected_output": "Refunds are processed within 5-7 business days via Billing settings.",
+        "tags": [],
+        "metadata": {}
+      },
+      {
+        "id": "tc-8f501fa2",
+        "name": "API Key Rotation",
+        "inputs": {
+          "query": "Where can I regenerate my secret API key?",
+          "tier": "enterprise"
+        },
+        "expected_output": "Navigate to Settings > API Keys and select Regenerate Key.",
+        "tags": [],
+        "metadata": {}
+      }
+    ]
+  },
+  "ds-f8f4ca92": {
+    "id": "ds-f8f4ca92",
+    "name": "Production Customer Queries",
+    "description": "Real world support queries with ground-truth guidelines",
+    "tags": [
+      "prod-bench",
+      "support-ai"
+    ],
+    "created_at": "2026-10-05 21:59:24",
+    "test_cases": [
+      {
+        "id": "tc-eab8afa1",
+        "name": "Refund Request Query",
+        "inputs": {
+          "query": "How do I request a refund?",
+          "tier": "pro"
+        },
+        "expected_output": "Refunds are processed within 5-7 business days via Billing settings.",
+        "tags": [],
+        "metadata": {}
+      },
+      {
+        "id": "tc-f6ea11b2",
+        "name": "API Key Rotation",
+        "inputs": {
+          "query": "Where can I regenerate my secret API key?",
+          "tier": "enterprise"
+        },
+        "expected_output": "Navigate to Settings > API Keys and select Regenerate Key.",
+        "tags": [],
+        "metadata": {}
+      }
+    ]
+  },
+  "ds-3f68a551": {
+    "id": "ds-3f68a551",
+    "name": "Production Customer Queries",
+    "description": "Real world support queries with ground-truth guidelines",
+    "tags": [
+      "prod-bench",
+      "support-ai"
+    ],
+    "created_at": "2026-10-21 18:45:09",
+    "test_cases": [
+      {
+        "id": "tc-29f2f736",
+        "name": "Refund Request Query",
+        "inputs": {
+          "query": "How do I request a refund?",
+          "tier": "pro"
+        },
+        "expected_output": "Refunds are processed within 5-7 business days via Billing settings.",
+        "tags": [],
+        "metadata": {}
+      },
+      {
+        "id": "tc-0fcf2535",
+        "name": "API Key Rotation",
+        "inputs": {
+          "query": "Where can I regenerate my secret API key?",
+          "tier": "enterprise"
+        },
+        "expected_output": "Navigate to Settings > API Keys and select Regenerate Key.",
+        "tags": [],
+        "metadata": {}
+      }
+    ]
+  },
+  "ds-cce0c19f": {
+    "id": "ds-cce0c19f",
+    "name": "Production Customer Queries",
+    "description": "Real world support queries with ground-truth guidelines",
+    "tags": [
+      "prod-bench",
+      "support-ai"
+    ],
+    "created_at": "2026-10-21 20:56:51",
+    "test_cases": [
+      {
+        "id": "tc-265680b7",
+        "name": "Refund Request Query",
+        "inputs": {
+          "query": "How do I request a refund?",
+          "tier": "pro"
+        },
+        "expected_output": "Refunds are processed within 5-7 business days via Billing settings.",
+        "tags": [],
+        "metadata": {}
+      },
+      {
+        "id": "tc-99bcabc6",
+        "name": "API Key Rotation",
+        "inputs": {
+          "query": "Where can I regenerate my secret API key?",
+          "tier": "enterprise"
+        },
+        "expected_output": "Navigate to Settings > API Keys and select Regenerate Key.",
+        "tags": [],
+        "metadata": {}
+      }
+    ]
+  }
+}

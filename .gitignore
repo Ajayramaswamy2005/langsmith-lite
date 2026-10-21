@@ -1,0 +1,36 @@
+# Dependencies
+node_modules/
+__pycache__/
+*.pyc
+
+# Environment & Keys
+.env
+.env.local
+*.key
+*.pem
+
+# Build outputs
+dist/
+dist-ssr/
+*.local
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+*.log
+
+# Editor & OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Local account + delivery records (hold real email addresses and password
+# hashes). Seeded datasets and runs are kept as sample data.
+backend/data/users.json
+backend/data/sent_emails.json
+
+# Browser automation artefacts
+.playwright-mcp/

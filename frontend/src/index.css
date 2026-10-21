@@ -1,0 +1,411 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+/* ===========================================================================
+   LangSmith Lite — "the test bench"
+
+   Evaluation is metrology: a specimen is measured against a tolerance and a
+   verdict is read off. So the interface is a precision instrument rather than
+   a marketing page. Cool drafting paper, iron-gall ink, drawn hairlines, and
+   exactly one loud element — the inked verdict stamp.
+
+   Rules this file enforces:
+   · structure is drawn (rules and ticks), never implied by shadow
+   · no gradients; one shadow, on the stamp, because a stamp sits on paper
+   · 3px radius on measurement planes, 0 on rules, full only on status dots
+   · numerals wear mono and align; prose wears sans and never aligns to them
+   =========================================================================== */
+
+@theme {
+  /* --- ground and planes --------------------------------------------- */
+  --color-paper: #eef1f0;        /* the sheet */
+  --color-paper-sunk: #e4e8e7;   /* recessed areas: rails, wells */
+  --color-plane: #fbfbfa;        /* the measurement surface */
+
+  /* --- ink ------------------------------------------------------------ */
+  --color-ink: #0d1a22;          /* iron-gall blue-black: primary text */
+  --color-ink-soft: #46585f;     /* secondary prose */
+  --color-ink-faint: #74858a;    /* labels, axis ticks */
+  --color-rule: #c6d0d2;         /* drawn hairline */
+  --color-rule-soft: #d9e0e0;    /* grid, zebra separators */
+
+  /* --- signal (brand) ------------------------------------------------- */
+  --color-signal: #15427a;       /* calibration blue: actions, links, focus */
+  --color-signal-ink: #0f3160;   /* pressed / heavier text use */
+  --color-signal-wash: #dde6f2;  /* cyanotype wash */
+
+  /* --- verdict -------------------------------------------------------- */
+  --color-stamp: #a9201a;        /* oxide stamp ink — display type only */
+  --color-pass-ink: #006300;     /* "within tolerance" text */
+
+  /* --- status (reserved; never reused as a series colour) ------------- */
+  --color-good: #0ca30c;
+  --color-warn: #fab219;
+  --color-serious: #ec835a;
+  --color-critical: #d03b3b;
+
+  /* --- chart series --------------------------------------------------
+     The documented light categorical palette, validated against this
+     file's #fbfbfa plane: lightness band, chroma floor, CVD separation
+     and normal-vision floor all pass on the adjacent pairlist. Slots 3,
+     4 and 5 sit below 3:1 against the plane, so every chart using them
+     ships visible direct labels or a table view (the relief rule).
+     ------------------------------------------------------------------ */
+  --color-series-1: #2a78d6;
+  --color-series-2: #eb6834;
+  --color-series-3: #1baf7a;
+  --color-series-4: #eda100;
+  --color-series-5: #e87ba4;
+  --color-series-6: #6250d6;
+
+  /* --- type ----------------------------------------------------------- */
+  --font-sans: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-display: "IBM Plex Sans Condensed", "IBM Plex Sans", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+
+  --text-micro: 11px;
+  --text-tiny: 12px;
+  --text-small: 13px;
+  --text-base: 15px;
+  --text-lead: 17px;
+
+  /* --- geometry ------------------------------------------------------- */
+  --radius: 3px;
+  --radius-sm: 2px;
+  --radius-md: 3px;
+  --radius-lg: 4px;
+  --radius-xl: 5px;
+
+  /* --- shadcn semantic tokens, mapped onto the bench ------------------ */
+  --color-background: var(--color-paper);
+  --color-foreground: var(--color-ink);
+  --color-card: var(--color-plane);
+  --color-card-foreground: var(--color-ink);
+  --color-popover: var(--color-plane);
+  --color-popover-foreground: var(--color-ink);
+  --color-primary: var(--color-signal);
+  --color-primary-foreground: #f7f9fb;
+  --color-secondary: var(--color-paper-sunk);
+  --color-secondary-foreground: var(--color-ink);
+  --color-muted: var(--color-paper-sunk);
+  --color-muted-foreground: var(--color-ink-faint);
+  --color-accent: var(--color-signal-wash);
+  --color-accent-foreground: var(--color-signal-ink);
+  --color-destructive: var(--color-critical);
+  --color-destructive-foreground: #fbfbfa;
+  --color-border: var(--color-rule);
+  --color-input: var(--color-rule);
+  --color-ring: var(--color-signal);
+  --color-sidebar: var(--color-paper-sunk);
+  --color-sidebar-foreground: var(--color-ink);
+  --color-sidebar-border: var(--color-rule);
+  --color-sidebar-accent: var(--color-signal-wash);
+  --color-sidebar-accent-foreground: var(--color-signal-ink);
+  --color-sidebar-primary: var(--color-signal);
+  --color-sidebar-primary-foreground: #f7f9fb;
+  --color-chart-1: var(--color-series-1);
+  --color-chart-2: var(--color-series-2);
+  --color-chart-3: var(--color-series-3);
+  --color-chart-4: var(--color-series-4);
+  --color-chart-5: var(--color-series-5);
+}
+
+/* Bare aliases for the handful of places the shadcn primitives reference a
+   token as a raw CSS variable rather than through a utility class. */
+:root {
+  --background: var(--color-paper);
+  --foreground: var(--color-ink);
+  --border: var(--color-rule);
+  --secondary: var(--color-paper-sunk);
+  --popover: var(--color-plane);
+  --popover-foreground: var(--color-ink);
+  --radius: 3px;
+  --radius-md: 3px;
+}
+
+/* ---------------------------------------------------------------- base ---- */
+
+@layer base {
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+  }
+
+  html {
+    color-scheme: light;
+    -webkit-text-size-adjust: 100%;
+    scroll-behavior: smooth;
+  }
+
+  body {
+    margin: 0;
+    background: var(--color-paper);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    font-size: var(--text-base);
+    font-weight: 400;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    font-feature-settings: "cv05" 1;
+    /* Deliberately not overflow-x: hidden. A sideways scrollbar is a bug
+       report; hiding it only makes the content unreachable. Anything wider
+       than the sheet scrolls inside its own container instead. */
+  }
+
+  h1, h2, h3, h4 {
+    margin: 0;
+    font-family: var(--font-display);
+    font-weight: 600;
+    line-height: 1.04;
+    letter-spacing: -0.012em;
+    text-wrap: balance;
+  }
+
+  p { margin: 0; text-wrap: pretty; }
+  a { color: inherit; text-decoration: none; }
+  button, input, select, textarea { font: inherit; color: inherit; }
+
+  ::selection {
+    background: var(--color-signal-wash);
+    color: var(--color-signal-ink);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-signal);
+    outline-offset: 2px;
+    border-radius: 2px;
+  }
+
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-rule) transparent;
+  }
+  *::-webkit-scrollbar { width: 11px; height: 11px; }
+  *::-webkit-scrollbar-track { background: transparent; }
+  *::-webkit-scrollbar-thumb {
+    background: var(--color-rule);
+    border: 3px solid transparent;
+    background-clip: content-box;
+    border-radius: 99px;
+  }
+  *::-webkit-scrollbar-thumb:hover {
+    background-color: #adbabd;
+    background-clip: content-box;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+/* --------------------------------------------------------- utilities ---- */
+
+/* The sheet. Content registers against a ruled left margin, which is the
+   structural signature of the whole product. */
+@utility sheet {
+  width: 100%;
+  max-width: 1240px;
+  margin-inline: auto;
+  padding-inline: 20px;
+  @media (width >= 56rem) {
+    padding-inline: 44px;
+  }
+}
+
+@utility display-xl {
+  font-family: var(--font-display);
+  font-size: clamp(2.5rem, 6.4vw, 4.25rem);
+  font-weight: 600;
+  line-height: 0.98;
+  letter-spacing: -0.016em;
+}
+
+@utility display-lg {
+  font-family: var(--font-display);
+  font-size: clamp(1.75rem, 3.4vw, 2.5rem);
+  font-weight: 600;
+  line-height: 1.04;
+  letter-spacing: -0.014em;
+}
+
+@utility display-md {
+  font-family: var(--font-display);
+  font-size: 1.375rem;
+  font-weight: 600;
+  line-height: 1.12;
+  letter-spacing: -0.01em;
+}
+
+/* Prose that stays inside a comfortable measure. */
+@utility measure {
+  max-width: 62ch;
+}
+
+@utility num {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "zero" 1;
+}
+
+/* A measurement surface: white plane, drawn border, no shadow. */
+@utility plane {
+  background: var(--color-plane);
+  border: 1px solid var(--color-rule);
+  border-radius: 3px;
+}
+
+/* A recessed well — used for inputs, rails and code. */
+@utility well {
+  background: var(--color-paper-sunk);
+  border: 1px solid var(--color-rule-soft);
+  border-radius: 3px;
+}
+
+/* ------------------------------------------------------- the ruled margin */
+
+/* Tick marks down the left edge of a section, like a drawing sheet's ruler.
+   The rail lives inside the sheet's existing gutter rather than indenting the
+   content, so a ruled section stays optically centred with every other one.
+   Decorative structure, so it is drawn with a background rather than markup. */
+.ruled {
+  position: relative;
+}
+.ruled::before {
+  content: "";
+  position: absolute;
+  inset-block: 0;
+  left: -13px;
+  width: 7px;
+  background-image:
+    linear-gradient(to right, var(--color-rule) 1px, transparent 1px),
+    repeating-linear-gradient(
+      to bottom,
+      var(--color-rule) 0 1px,
+      transparent 1px 28px
+    );
+  background-size: 1px 100%, 7px 100%;
+  background-repeat: no-repeat, repeat-y;
+  pointer-events: none;
+}
+@media (width >= 56rem) {
+  .ruled::before {
+    left: -26px;
+  }
+}
+/* A 20px gutter has no room for the rail; the rule alone would read as a stray
+   line against the viewport edge. */
+@media (width < 40rem) {
+  .ruled::before {
+    display: none;
+  }
+}
+
+/* Graph paper, used only behind the hero instrument. */
+.graph-paper {
+  background-color: var(--color-paper);
+  background-image:
+    linear-gradient(to right, var(--color-rule-soft) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--color-rule-soft) 1px, transparent 1px);
+  background-size: 28px 28px;
+}
+
+/* ------------------------------------------------------------ the stamp -- */
+
+/* The single loud element. An inked verdict, struck slightly off-square with
+   a torn edge, the way a rubber stamp lands on a QC sheet. */
+.stamp {
+  position: relative;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  padding: 7px 16px 8px;
+  border: 3px double currentColor;
+  border-radius: 3px;
+  font-family: var(--font-display);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  transform: rotate(-3.5deg);
+  opacity: 0.88;
+  mix-blend-mode: multiply;
+}
+.stamp::after {
+  /* ink mottling, so it reads as pressed rather than printed */
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 3px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='t'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.7' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23t)' opacity='0.55'/%3E%3C/svg%3E");
+  mix-blend-mode: screen;
+  opacity: 0.5;
+  pointer-events: none;
+}
+.stamp-reject { color: var(--color-stamp); }
+.stamp-pass { color: var(--color-pass-ink); }
+
+/* The one orchestrated motion in the product: the stamp lands. */
+@keyframes strike {
+  0% { transform: rotate(-3.5deg) scale(2.1); opacity: 0; }
+  55% { opacity: 0.95; }
+  70% { transform: rotate(-3.5deg) scale(0.97); }
+  100% { transform: rotate(-3.5deg) scale(1); opacity: 0.88; }
+}
+.stamp-strike {
+  animation: strike 0.44s cubic-bezier(0.2, 0.9, 0.3, 1) both;
+}
+
+@keyframes register-in {
+  from { opacity: 0; transform: translateX(-4px); }
+  to { opacity: 1; transform: none; }
+}
+
+/* ------------------------------------------------------------- figures -- */
+
+/* Tolerance band on a metric: the acceptable range drawn behind the reading. */
+.band {
+  position: relative;
+  height: 6px;
+  background: var(--color-paper-sunk);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.band-ok {
+  position: absolute;
+  inset-block: 0;
+  background: color-mix(in oklab, var(--color-good) 22%, transparent);
+}
+.band-needle {
+  position: absolute;
+  inset-block: -3px;
+  width: 2px;
+  background: var(--color-ink);
+}
+
+.code-sheet {
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  line-height: 1.7;
+  tab-size: 2;
+  white-space: pre;
+  overflow-x: auto;
+}
+.t-key { color: #6250d6; }
+.t-str { color: #1b6f8c; }
+.t-num { color: #a9201a; }
+.t-com { color: var(--color-ink-faint); }
+
+/* Recharts chrome, matched to the drawn hairlines. */
+.recharts-surface { overflow: visible; }
+.recharts-cartesian-axis-tick text {
+  fill: var(--color-ink-faint);
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+}

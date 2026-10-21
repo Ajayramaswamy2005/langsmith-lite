@@ -1,0 +1,1438 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LangSmith Lite — LLM Evaluation & Observability Infrastructure</title>
+  
+  <!-- Favicon: Observability & Prism Symbol -->
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='white'%3E%3Cg transform='rotate(-30 12 12)'%3E%3Ccircle cx='7.3' cy='3.2' r='1.45'/%3E%3Crect x='5.5' y='4.7' width='3.6' height='14.6' rx='1.8'/%3E%3Crect x='14.9' y='4.7' width='3.6' height='14.6' rx='1.8'/%3E%3Ccircle cx='16.7' cy='20.8' r='1.45'/%3E%3C/g%3E%3C/svg%3E">
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900&family=Instrument+Serif:ital@1&display=swap" rel="stylesheet">
+
+  <style>
+    /* 1. Force black immediately so the page can never flash white */
+    html, body { background: #000000 !important; color: #ffffff; }
+
+    /* Exact Font Faces */
+    @font-face {
+      font-family: "Inter";
+      font-style: normal;
+      font-weight: 100 900;
+      font-display: swap;
+      src: url("inter.woff2") format("woff2");
+    }
+    @font-face {
+      font-family: "Instrument Serif";
+      font-style: italic;
+      font-weight: 400;
+      font-display: swap;
+      src: url("instrument-serif-italic.woff2") format("woff2");
+    }
+
+    /* Universal reset */
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    /* Re-enforce background and font smoothing */
+    html, body {
+      background: #000000;
+      background: var(--bg, #000000);
+      color: #ffffff;
+      color: var(--text, #ffffff);
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      text-rendering: optimizeLegibility;
+      overflow-x: hidden;
+      position: relative;
+      font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    a {
+      color: inherit;
+      text-decoration: none;
+    }
+
+    button {
+      font-family: inherit;
+      border: none;
+      background: none;
+    }
+
+    /* Tokens (default / ~1440px) */
+    :root {
+      --bg: #000000;
+      --text: #ffffff;
+      --muted: #9a9a9a;
+      --stat: #d8d8d8;
+      --border: rgba(255, 255, 255, 0.16);
+      --border-soft: rgba(255, 255, 255, 0.12);
+
+      --logo: 15.5px;
+      --logo-mark: 22px;
+      --nav: 14px;
+      --nav-h: 40px;
+      --btn: 13.5px;
+      --btn-h: 40px;
+      --hero-btn-h: 42px;
+      --h1: 48px;
+      --lede: 15.5px;
+      --badge: 12.5px;
+      --stat-size: 13.5px;
+      --header-y: 22px;
+      --header-x: 40px;
+      --stats-x: 72px;
+      --stats-y: 36px;
+      --hero-gap: 85px;
+      --copy-max: 860px;
+      --lede-max: 490px;
+    }
+
+    /* Layer Stack */
+    /* 4. .grain at z-index: 100 */
+    .grain {
+      position: fixed;
+      inset: 0;
+      z-index: 100;
+      pointer-events: none;
+      opacity: 0.035;
+      mix-blend-mode: overlay;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+    }
+
+    /* 2. .hero-photo + Video background + ::after scrim */
+    .hero-photo {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+      overflow: hidden;
+      background: #000000;
+    }
+
+    .hero-video {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      min-width: 100%;
+      min-height: 100%;
+      width: auto;
+      height: auto;
+      transform: translate(-50%, -50%);
+      object-fit: cover;
+      opacity: 0.92;
+      filter: contrast(1.1) brightness(0.92);
+      transition: opacity 1.2s ease;
+    }
+
+    .hero-ambient-glow {
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(circle at 50% 45%, rgba(56, 189, 248, 0.07) 0%, rgba(99, 102, 241, 0.05) 35%, transparent 70%);
+      animation: pulse-glow 9s ease-in-out infinite alternate;
+      pointer-events: none;
+    }
+
+    @keyframes pulse-glow {
+      0% { opacity: 0.45; transform: scale(0.98); }
+      100% { opacity: 0.95; transform: scale(1.03); }
+    }
+
+    .hero-photo::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(circle at 50% 48%, rgba(0, 0, 0, 0.05) 0%, rgba(0, 0, 0, 0.5) 60%, #000000 100%),
+                  linear-gradient(180deg, rgba(0, 0, 0, 0.45) 0%, transparent 35%, rgba(0, 0, 0, 0.75) 100%);
+      pointer-events: none;
+    }
+
+    /* 3. .page */
+    .page {
+      position: relative;
+      z-index: 1;
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      min-height: 100vh;
+      min-height: 100dvh;
+    }
+
+    /* Header */
+    header.header {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      align-items: center;
+      padding: var(--header-y) var(--header-x) 10px;
+      z-index: 50;
+      position: relative;
+    }
+
+    /* Logo */
+    a.logo {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      justify-self: start;
+      font-size: var(--logo);
+      font-weight: 600;
+      letter-spacing: -0.03em;
+      color: #fff;
+      transition: opacity 0.25s ease;
+    }
+
+    a.logo:hover {
+      opacity: 0.92;
+    }
+
+    .logo-mark {
+      width: var(--logo-mark);
+      height: var(--logo-mark);
+      flex-shrink: 0;
+    }
+
+    .logo-suffix {
+      font-weight: 400;
+      color: #9a9a9a;
+      margin-left: 1px;
+    }
+
+    /* Nav */
+    #site-nav {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      justify-self: center;
+    }
+
+    .nav-pill {
+      height: var(--nav-h);
+      padding: 0 18px;
+      border-radius: 7px;
+      overflow: hidden;
+      position: relative;
+      border: 1px solid rgba(198, 198, 198, 0.55);
+      background: linear-gradient(105deg, #050505 0%, #2a2a2a 48%, #4a4a4a 100%);
+      color: #f3f3f3;
+      font-size: var(--nav);
+      font-weight: 400;
+      letter-spacing: -0.01em;
+      white-space: nowrap;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.35s ease, border-color 0.35s ease, box-shadow 0.35s ease, color 0.35s ease;
+    }
+
+    .nav-pill::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      background: linear-gradient(115deg, transparent 30%, rgba(255, 255, 255, 0.16) 50%, transparent 70%);
+      transform: translateX(-120%);
+      transition: transform 0.6s ease;
+    }
+
+    .nav-pill:hover::before {
+      transform: translateX(120%);
+    }
+
+    .nav-pill:hover {
+      border-color: rgba(235, 235, 235, 0.9);
+      background: linear-gradient(105deg, #111111 0%, #3a3a3a 45%, #6a6a6a 100%);
+      box-shadow: 0 0 18px rgba(200, 210, 230, 0.18);
+    }
+
+    /* Header CTA */
+    .header-cta {
+      justify-self: end;
+    }
+
+    /* Burger Button */
+    .burger {
+      display: none;
+      width: 42px;
+      height: 42px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: rgba(8, 8, 8, 0.55);
+      z-index: 60;
+      place-content: center;
+      cursor: pointer;
+      padding: 0;
+      transition: border-color 0.25s ease, background 0.25s ease;
+    }
+
+    .burger:hover {
+      border-color: rgba(255, 255, 255, 0.32);
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    .burger-inner {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .burger-bar {
+      width: 16px;
+      height: 1.5px;
+      border-radius: 1px;
+      background: #ffffff;
+      display: block;
+      transition: transform 0.25s ease, opacity 0.2s ease;
+    }
+
+    body.menu-open .burger-bar:nth-child(1) {
+      transform: translateY(6.5px) rotate(45deg);
+    }
+
+    body.menu-open .burger-bar:nth-child(2) {
+      opacity: 0;
+    }
+
+    body.menu-open .burger-bar:nth-child(3) {
+      transform: translateY(-6.5px) rotate(-45deg);
+    }
+
+    /* Mobile Backdrop */
+    .menu-backdrop {
+      display: none;
+    }
+
+    /* Buttons */
+    .btn {
+      position: relative;
+      isolation: isolate;
+      overflow: hidden;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      height: var(--btn-h);
+      padding: 0 16px;
+      border-radius: 6px;
+      font-size: var(--btn);
+      font-weight: 500;
+      letter-spacing: -0.02em;
+      line-height: 1;
+      white-space: nowrap;
+      cursor: pointer;
+      text-decoration: none;
+      transition: background 0.35s ease, border-color 0.35s ease, box-shadow 0.35s ease, color 0.35s ease, filter 0.35s ease, transform 0.2s ease;
+    }
+
+    .btn::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 1;
+      background: linear-gradient(115deg, transparent 20%, rgba(255, 255, 255, 0.45) 48%, transparent 76%);
+      transform: translateX(-130%);
+      transition: transform 0.65s ease;
+    }
+
+    .btn:hover::after {
+      transform: translateX(130%);
+    }
+
+    /* Solid Button */
+    .btn-solid {
+      background: linear-gradient(180deg, #ffffff 0%, #e7e7e7 48%, #cfcfcf 100%);
+      color: #111;
+      border: 1px solid #fff;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.95);
+    }
+
+    .btn-solid:hover {
+      background: linear-gradient(180deg, #ffffff 0%, #f3f6ff 42%, #d5def2 100%);
+      border-color: #f2f6ff;
+      box-shadow: inset 0 1px 0 #fff, 0 0 22px rgba(186, 208, 255, 0.35), 0 8px 18px rgba(255, 255, 255, 0.12);
+    }
+
+    .hero .btn-solid:hover {
+      box-shadow: inset 0 1px 0 #fff, 0 0 26px rgba(186, 208, 255, 0.4), 0 8px 18px rgba(255, 255, 255, 0.14);
+    }
+
+    /* Ghost Button */
+    .btn-ghost {
+      background: linear-gradient(135deg, rgba(255, 255, 255, 0.1), rgba(0, 0, 0, 0.45) 50%, rgba(160, 175, 200, 0.08));
+      color: #fff;
+      border: 1px solid rgba(198, 198, 198, 0.45);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12);
+    }
+
+    .btn-ghost:hover {
+      background: linear-gradient(135deg, rgba(210, 225, 255, 0.18), rgba(0, 0, 0, 0.35) 48%, rgba(180, 195, 220, 0.16));
+      border-color: rgba(220, 230, 255, 0.75);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22), 0 0 20px rgba(170, 200, 255, 0.22);
+    }
+
+    .hero .btn-ghost {
+      background: linear-gradient(135deg, rgba(255, 255, 255, 0.12), rgba(0, 0, 0, 0.5) 46%, rgba(150, 170, 200, 0.1));
+      border: 1px solid rgba(198, 198, 198, 0.55);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+    }
+
+    .hero .btn-ghost:hover {
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22), 0 0 24px rgba(170, 200, 255, 0.28);
+      border-color: rgba(220, 230, 255, 0.8);
+    }
+
+    .hero-actions .btn {
+      height: var(--hero-btn-h);
+      padding: 0 18px;
+    }
+
+    /* Hero Section (Bottom-Centered) */
+    main.hero {
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      padding: 8px 24px var(--hero-gap);
+      min-height: 0;
+    }
+
+    .hero-copy {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      max-width: var(--copy-max);
+      width: 100%;
+    }
+
+    /* Badge */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 22px;
+      padding: 9px 15px;
+      border: 0;
+      border-radius: 5px;
+      background: linear-gradient(90deg, #7d7d7d 0%, #2a2a2a 52%, #0a0a0a 100%);
+      color: #f2f2f2;
+      font-size: var(--badge);
+      font-weight: 400;
+      letter-spacing: -0.01em;
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+    }
+
+    .badge-star {
+      width: 18px;
+      height: 20px;
+      fill: #ffffff;
+      filter: drop-shadow(0 0 3px rgba(255, 255, 255, 0.45));
+      animation: in-star 0.9s cubic-bezier(0.16, 1, 0.3, 1) 0.28s both;
+      flex-shrink: 0;
+    }
+
+    /* H1 Headline */
+    .headline {
+      font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-size: var(--h1);
+      font-weight: 500;
+      letter-spacing: -0.045em;
+      line-height: 1.12;
+      color: #ffffff;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin: 0;
+    }
+
+    .headline-line {
+      display: block;
+      overflow: hidden;
+      padding: 0.06em 0.15em 0.14em;
+    }
+
+    .headline-inner {
+      display: block;
+    }
+
+    .headline em {
+      font-family: "Instrument Serif", "Times New Roman", Times, serif;
+      font-style: italic;
+      font-weight: 400;
+      font-size: 1.08em;
+      letter-spacing: -0.03em;
+      color: #9a9a9a;
+      display: inline-block;
+      animation: in-em 1.2s cubic-bezier(0.16, 1, 0.3, 1) 0.72s both;
+    }
+
+    /* Lede */
+    .lede {
+      max-width: var(--lede-max);
+      margin-top: 18px;
+      color: #9a9a9a;
+      font-size: var(--lede);
+      font-weight: 400;
+      line-height: 1.55;
+      letter-spacing: -0.015em;
+    }
+
+    .lede.appear {
+      animation-duration: 1.25s;
+    }
+
+    /* Hero Actions */
+    .hero-actions {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      align-items: center;
+      gap: 10px;
+      margin-top: 26px;
+    }
+
+    /* Stats Footer */
+    footer.stats {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 24px;
+      padding: 0 var(--stats-x) var(--stats-y);
+      padding-bottom: max(var(--stats-y), env(safe-area-inset-bottom));
+      color: #d8d8d8;
+      position: relative;
+      z-index: 2;
+    }
+
+    .stat {
+      display: inline-flex;
+      align-items: center;
+      gap: 14px;
+      font-size: var(--stat-size);
+      letter-spacing: -0.015em;
+      white-space: nowrap;
+    }
+
+    .stat-icon {
+      width: 20px;
+      height: 20px;
+      flex-shrink: 0;
+    }
+
+    .stat-icon-wide {
+      width: 38px;
+      height: 21px;
+      flex-shrink: 0;
+    }
+
+    /* Entrance Motion */
+    .appear {
+      opacity: 1; /* Resting opacity 1 so page is never blank if animations fail */
+      animation-duration: 1.05s;
+      animation-fill-mode: both;
+      animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+      animation-delay: var(--d, 0.08s);
+    }
+
+    .appear--scale { animation-name: in-scale; }
+    .appear--soft  { animation-name: in-soft; }
+    .appear--mask  { animation-name: in-mask; }
+    .appear--pop   { animation-name: in-pop; }
+    .appear--btn   { animation-name: in-btn; }
+    .appear--side  { animation-name: in-side; }
+    .appear--stat  { animation-name: in-stat; }
+
+    @keyframes in-scale {
+      0% { opacity: 0; transform: scale(0.84); }
+      100% { opacity: 1; transform: scale(1); }
+    }
+
+    @keyframes in-soft {
+      0% { opacity: 0; transform: translateY(14px); }
+      100% { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes in-mask {
+      0% { opacity: 0; transform: translateY(40%); }
+      100% { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes in-pop {
+      0% { opacity: 0; transform: scale(0.9); }
+      70% { opacity: 1; transform: scale(1.03); }
+      100% { opacity: 1; transform: scale(1); }
+    }
+
+    @keyframes in-btn {
+      0% { opacity: 0; transform: translateY(18px) scale(0.94); }
+      100% { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    @keyframes in-side {
+      0% { opacity: 0; transform: translateX(22px); }
+      100% { opacity: 1; transform: translateX(0); }
+    }
+
+    @keyframes in-stat {
+      0% { opacity: 0; transform: translateY(20px); }
+      100% { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes in-star {
+      0% { opacity: 0; transform: scale(0.2) rotate(-50deg); }
+      65% { opacity: 1; transform: scale(1.2) rotate(8deg); }
+      100% { opacity: 1; transform: scale(1) rotate(0deg); }
+    }
+
+    @keyframes in-em {
+      0% { opacity: 0.35; filter: blur(4px); }
+      100% { opacity: 1; filter: blur(0); }
+    }
+
+    .is-in {
+      animation: none !important;
+      opacity: 1 !important;
+      transform: none !important;
+      clip-path: none !important;
+      filter: none !important;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        transition: none !important;
+        animation: none !important;
+      }
+      .appear, .hero-photo, .hero h1 em, .badge-star {
+        opacity: 1 !important;
+        transform: none !important;
+        clip-path: none !important;
+        filter: none !important;
+      }
+    }
+
+    /* Interactive Console Modal Overlay */
+    .console-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 90;
+      background: rgba(4, 4, 6, 0.78);
+      backdrop-filter: blur(28px);
+      -webkit-backdrop-filter: blur(28px);
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.35s ease, visibility 0.35s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+
+    body.console-open .console-overlay {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    .console-card {
+      background: #09090b;
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      border-radius: 14px;
+      width: 100%;
+      max-width: 980px;
+      max-height: 88vh;
+      overflow-y: auto;
+      box-shadow: 0 24px 70px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(255, 255, 255, 0.05);
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      transform: translateY(20px) scale(0.98);
+      transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    body.console-open .console-card {
+      transform: translateY(0) scale(1);
+    }
+
+    .console-header {
+      padding: 18px 24px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      background: rgba(9, 9, 11, 0.94);
+      backdrop-filter: blur(12px);
+      z-index: 10;
+    }
+
+    .console-close {
+      width: 32px;
+      height: 32px;
+      border-radius: 6px;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      background: rgba(255, 255, 255, 0.05);
+      color: #ffffff;
+      cursor: pointer;
+      display: grid;
+      place-content: center;
+      transition: background 0.2s ease, border-color 0.2s ease;
+    }
+
+    .console-close:hover {
+      background: rgba(255, 255, 255, 0.15);
+      border-color: rgba(255, 255, 255, 0.35);
+    }
+
+    .console-body {
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+
+    .metric-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+    }
+
+    .metric-box {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 8px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .metric-val {
+      font-size: 24px;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+      color: #ffffff;
+    }
+
+    .metric-label {
+      font-size: 12px;
+      color: #9a9a9a;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .table-container {
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    .console-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+      text-align: left;
+    }
+
+    .console-table th {
+      background: rgba(255, 255, 255, 0.04);
+      padding: 10px 14px;
+      color: #9a9a9a;
+      font-weight: 500;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .console-table td {
+      padding: 12px 14px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      color: #e2e8f0;
+    }
+
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 3px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 500;
+      background: rgba(16, 185, 129, 0.12);
+      color: #34d399;
+      border: 1px solid rgba(16, 185, 129, 0.25);
+    }
+
+    /* Responsive Breakpoints */
+
+    /* 1280 - 1599 */
+    @media (min-width: 1280px) and (max-width: 1599px) {
+      :root {
+        --h1: 54px;
+        --lede: 16px;
+        --header-x: 48px;
+        --stats-x: 80px;
+        --copy-max: 900px;
+      }
+    }
+
+    /* ≥ 1600 */
+    @media (min-width: 1600px) {
+      :root {
+        --logo: 17px;
+        --logo-mark: 24px;
+        --nav: 15px;
+        --nav-h: 44px;
+        --btn: 15px;
+        --btn-h: 44px;
+        --hero-btn-h: 48px;
+        --h1: 64px;
+        --lede: 18px;
+        --badge: 13.5px;
+        --stat-size: 15px;
+        --header-y: 28px;
+        --header-x: 64px;
+        --stats-x: 96px;
+        --stats-y: 44px;
+        --copy-max: 980px;
+        --lede-max: 540px;
+      }
+      #site-nav a { padding: 0 20px; }
+      .badge { margin-bottom: 26px; }
+      .lede { margin-top: 22px; }
+      .hero-actions { margin-top: 30px; gap: 12px; }
+      .stat .stat-icon { width: 22px; height: 22px; }
+      .stat-icon-wide { width: 45px; height: 24px; }
+    }
+
+    /* ≥ 1920 */
+    @media (min-width: 1920px) {
+      :root {
+        --logo: 18px;
+        --logo-mark: 26px;
+        --nav: 16px;
+        --nav-h: 48px;
+        --btn: 16px;
+        --btn-h: 48px;
+        --hero-btn-h: 52px;
+        --h1: 76px;
+        --lede: 20px;
+        --badge: 14.5px;
+        --stat-size: 16px;
+        --header-y: 32px;
+        --header-x: 80px;
+        --stats-x: 120px;
+        --stats-y: 52px;
+        --copy-max: 1120px;
+        --lede-max: 620px;
+      }
+      #site-nav { gap: 10px; }
+      #site-nav a { padding: 0 22px; }
+      .btn { padding: 0 22px; }
+      .badge { padding: 10px 15px; }
+      .stat-icon-wide { width: 48px; height: 26px; }
+    }
+
+    /* ≥ 2560 */
+    @media (min-width: 2560px) {
+      :root {
+        --h1: 88px;
+        --lede: 22px;
+        --header-x: 120px;
+        --stats-x: 160px;
+        --copy-max: 1280px;
+        --lede-max: 680px;
+      }
+    }
+
+    /* 901 - 1279 */
+    @media (min-width: 901px) and (max-width: 1279px) {
+      :root {
+        --logo: 15px;
+        --nav: 13px;
+        --nav-h: 36px;
+        --btn: 13px;
+        --btn-h: 38px;
+        --hero-btn-h: 40px;
+        --h1: 42px;
+        --lede: 15px;
+        --badge: 12px;
+        --stat-size: 12.5px;
+        --header-y: 16px;
+        --header-x: 28px;
+        --stats-x: 36px;
+        --stats-y: 28px;
+        --hero-gap: 64px;
+        --copy-max: 760px;
+        --lede-max: 440px;
+      }
+      #site-nav a { padding: 0 14px; }
+      .badge { margin-bottom: 16px; }
+      .lede { margin-top: 14px; }
+      .hero-actions { margin-top: 20px; }
+    }
+
+    /* ≥ 901 and max-height 850 */
+    @media (min-width: 901px) and (max-height: 850px) {
+      :root {
+        --header-y: 14px;
+        --stats-y: 24px;
+        --hero-gap: 48px;
+        --h1: 40px;
+      }
+      .badge { margin-bottom: 12px; }
+      .lede { margin-top: 12px; }
+      .hero-actions { margin-top: 16px; }
+    }
+
+    /* ≥ 901 and max-height 720 */
+    @media (min-width: 901px) and (max-height: 720px) {
+      :root {
+        --h1: 34px;
+        --lede: 14px;
+        --hero-gap: 32px;
+        --stats-y: 18px;
+        --nav-h: 30px;
+        --btn-h: 34px;
+        --hero-btn-h: 36px;
+      }
+      .badge { margin-bottom: 8px; }
+    }
+
+    /* ≥ 901 desktop lock: One frame, no scroll */
+    @media (min-width: 901px) {
+      html, body {
+        height: 100%;
+        overflow: hidden;
+      }
+      .page {
+        height: 100vh;
+        height: 100dvh;
+        overflow: hidden;
+      }
+    }
+
+    /* ≤ 900 phone */
+    @media (max-width: 900px) {
+      html, body {
+        height: auto;
+        overflow-y: auto;
+      }
+
+      :root {
+        --logo: 16px;
+        --btn: 15px;
+        --btn-h: 46px;
+        --hero-btn-h: 48px;
+        --h1: 36px;
+        --lede: 16.5px;
+        --badge: 13.5px;
+        --stat-size: 15px;
+        --header-y: 16px;
+        --header-x: 18px;
+        --stats-x: 20px;
+        --stats-y: 28px;
+        --hero-gap: 36px;
+        --copy-max: 100%;
+        --lede-max: 100%;
+      }
+
+      header.header {
+        grid-template-columns: 1fr auto auto;
+        gap: 8px;
+        padding-top: max(var(--header-y), env(safe-area-inset-top));
+        padding-left: max(var(--header-x), env(safe-area-inset-left));
+        padding-right: max(var(--header-x), env(safe-area-inset-right));
+      }
+
+      a.logo, .header-cta, .burger {
+        z-index: 80;
+        position: relative;
+      }
+
+      .burger {
+        display: grid;
+      }
+
+      /* Fullscreen Mobile Menu */
+      .menu-backdrop {
+        display: block;
+        position: fixed;
+        inset: 0;
+        z-index: 40;
+        background: rgba(8, 8, 8, 0.42);
+        opacity: 0;
+        visibility: hidden;
+        transition: opacity 0.28s ease, visibility 0.28s ease;
+      }
+
+      body.menu-open .menu-backdrop {
+        opacity: 1;
+        visibility: visible;
+        backdrop-filter: blur(24px);
+        -webkit-backdrop-filter: blur(24px);
+      }
+
+      #site-nav {
+        display: none;
+      }
+
+      body.menu-open #site-nav {
+        display: flex;
+        flex-direction: column;
+        position: fixed;
+        inset: 0;
+        z-index: 45;
+        background: transparent;
+        align-items: center;
+        justify-content: flex-start;
+        gap: 12px;
+        padding: 96px 22px 32px;
+        padding-top: max(96px, calc(env(safe-area-inset-top) + 88px));
+      }
+
+      body.menu-open #site-nav .nav-pill {
+        width: 100%;
+        max-width: 400px;
+        height: 56px;
+        font-size: 19px;
+        border-radius: 10px;
+        justify-content: center;
+      }
+
+      body.menu-open {
+        overflow: hidden;
+      }
+
+      main.hero {
+        padding: 20px 20px 64px;
+        align-items: flex-end;
+      }
+
+      footer.stats {
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        gap: 16px;
+        white-space: normal;
+      }
+
+      .stat {
+        white-space: normal;
+        text-align: center;
+      }
+    }
+
+    /* ≤ 560 */
+    @media (max-width: 560px) {
+      :root {
+        --h1: 34px;
+        --lede: 16px;
+        --header-x: 16px;
+      }
+
+      .hero-actions {
+        flex-direction: column;
+        width: 100%;
+      }
+
+      .hero-actions .btn {
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+<body style="background:#000;color:#fff">
+  <div class="grain" aria-hidden="true"></div>
+
+  <!-- Hero Photo with Active Animated Video + Ambient Mesh -->
+  <div class="hero-photo" aria-hidden="true">
+    <video autoplay loop muted playsinline class="hero-video">
+      <source src="https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260818_072341_50851634-bbc3-4c33-9acc-7647d4db44aa.mp4" type="video/mp4">
+    </video>
+    <div class="hero-ambient-glow"></div>
+  </div>
+
+  <div class="page">
+    <div class="menu-backdrop" aria-hidden="true"></div>
+    
+    <!-- Header: 3-column Grid -->
+    <header class="header">
+      <a href="#top" class="logo appear appear--scale" aria-label="LangSmith Lite" style="--d: 0.08s;">
+        <!-- LangSmith Observability Prism Mark -->
+        <svg class="logo-mark" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+          <g transform="rotate(-30 12 12)">
+            <circle cx="7.3" cy="3.2" r="1.45" />
+            <rect x="5.5" y="4.7" width="3.6" height="14.6" rx="1.8" />
+            <rect x="14.9" y="4.7" width="3.6" height="14.6" rx="1.8" />
+            <circle cx="16.7" cy="20.8" r="1.45" />
+          </g>
+        </svg>
+        <span>LangSmith<span class="logo-suffix">.lite</span></span>
+      </a>
+
+      <!-- Primary Navigation -->
+      <nav id="site-nav" aria-label="Primary">
+        <a href="#datasets" class="nav-pill appear appear--scale js-open-console" data-target="datasets" style="--d: 0.16s;">Datasets</a>
+        <a href="#evaluate" class="nav-pill appear appear--soft js-open-console" data-target="evaluate" style="--d: 0.28s;">Eval Runner</a>
+        <a href="#compare" class="nav-pill appear appear--scale js-open-console" data-target="compare" style="--d: 0.40s;">Comparison</a>
+        <a href="#traces" class="nav-pill appear appear--soft js-open-console" data-target="traces" style="--d: 0.52s;">Traces</a>
+      </nav>
+
+      <!-- Header CTA -->
+      <a href="#console" class="btn btn-solid header-cta appear appear--scale js-open-console" style="--d: 0.34s;">Launch Console</a>
+
+      <!-- Mobile Hamburger -->
+      <button class="burger appear appear--scale" style="--d: 0.34s;" aria-controls="site-nav" aria-expanded="false" aria-label="Open menu">
+        <span class="burger-inner">
+          <span class="burger-bar"></span>
+          <span class="burger-bar"></span>
+          <span class="burger-bar"></span>
+        </span>
+      </button>
+    </header>
+
+    <!-- Bottom-Centered Hero -->
+    <main class="hero" id="top">
+      <div class="hero-copy">
+        <!-- Badge with Animated Star -->
+        <div class="badge appear appear--pop" style="--d: 0.22s;">
+          <svg class="badge-star" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <path d="M12 2.6C12.55 2.6 12.88 3.15 13.08 4.7c.62 4.7 1.52 5.6 6.22 6.22 1.55.2 2.1.53 2.1 1.08s-.55.88-2.1 1.08c-4.7.62-5.6 1.52-6.22 6.22-.2 1.55-.53 2.1-1.08 2.1s-.88-.55-1.08-2.1c-.62-4.7-1.52-5.6-6.22-6.22C3.15 12.88 2.6 12.55 2.6 12s.55-.88 2.1-1.08c4.7-.62 5.6-1.52 6.22-6.22C11.12 3.15 11.45 2.6 12 2.6Z"/>
+          </svg>
+          <span>Continuous LLM Evaluation &amp; Guardrails</span>
+        </div>
+
+        <!-- 2-Line Headline with Italic Serif Accent -->
+        <h1 class="headline">
+          <span class="headline-line"><span class="headline-inner appear appear--mask" style="--d: 0.42s;">Evaluate <em>LLM agents</em> on your</span></span>
+          <span class="headline-line"><span class="headline-inner appear appear--mask" style="--d: 0.62s;">production traces in minutes.</span></span>
+        </h1>
+
+        <!-- Lede -->
+        <p class="lede appear appear--soft" style="--d: 0.82s;">Deploy automated eval suites, track prompt regressions, and inspect end-to-end trace latency across your live LLM applications.</p>
+
+        <!-- Actions -->
+        <div class="hero-actions">
+          <a href="#console" class="btn btn-solid appear appear--btn js-open-console" data-target="dashboard" style="--d: 0.96s;">Launch Console</a>
+          <a href="#traces" class="btn btn-ghost appear appear--side js-open-console" data-target="traces" style="--d: 1.10s;">View Live Traces</a>
+        </div>
+      </div>
+    </main>
+
+    <!-- Stats Footer -->
+    <footer class="stats">
+      <!-- Stat 1: Workflow Telemetry -->
+      <div class="stat appear appear--stat" style="--d: 1.12s;">
+        <svg class="stat-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <defs>
+            <linearGradient id="statGrad1" x1="3" y1="2" x2="14" y2="22" gradientUnits="userSpaceOnUse">
+              <stop offset="0%" stop-color="#ffffff" stop-opacity="0.38"/>
+              <stop offset="100%" stop-color="#3a3a3a" stop-opacity="0.62"/>
+            </linearGradient>
+            <linearGradient id="statGrad2" x1="3" y1="2" x2="14" y2="22" gradientUnits="userSpaceOnUse">
+              <stop offset="0%" stop-color="#3a3a3a" stop-opacity="0.38"/>
+              <stop offset="100%" stop-color="#ffffff" stop-opacity="0.62"/>
+            </linearGradient>
+          </defs>
+          <rect x="3.4" y="2.6" width="7.2" height="18.8" rx="3.6" fill="url(#statGrad1)"/>
+          <rect x="13.4" y="2.6" width="7.2" height="18.8" rx="3.6" fill="url(#statGrad2)"/>
+          <rect x="9.2" y="10.9" width="5.6" height="2.2" rx="1.1" fill="#4a4a4a"/>
+        </svg>
+        <span>14.8M+ traces evaluated &amp; guarded</span>
+      </div>
+
+      <!-- Stat 2: Regression Reduction -->
+      <div class="stat appear appear--stat" style="--d: 1.28s;">
+        <svg class="stat-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <rect x="2.4" y="2.4" width="19.2" height="19.2" rx="6.2" fill="#ffffff"/>
+          <path d="M12 7.1v7.4" stroke="#111111" stroke-width="1.85" stroke-linecap="round"/>
+          <path d="M8.15 12.35L12 16.2l3.85-3.85" stroke="#111111" stroke-width="1.85" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <span>99.4% prompt regression prevention</span>
+      </div>
+
+      <!-- Stat 3: Active Engineering Teams -->
+      <div class="stat appear appear--stat" style="--d: 1.44s;">
+        <svg class="stat-icon-wide" viewBox="0 0 40 22" fill="none" aria-hidden="true">
+          <g>
+            <circle cx="10.2" cy="11" r="9.2" fill="#2b2b2b"/>
+            <polygon points="7.4,6.8 8.8,4.5 9.7,7.2" fill="#2b2b2b"/>
+            <polygon points="13.0,6.8 11.6,4.5 10.7,7.2" fill="#2b2b2b"/>
+            <ellipse cx="10.2" cy="12.1" rx="4.15" ry="3.7" fill="#f4f4f4"/>
+            <circle cx="9.0" cy="11.8" r="0.7" fill="#1a1a1a"/>
+            <circle cx="11.4" cy="11.8" r="0.7" fill="#1a1a1a"/>
+          </g>
+          <g>
+            <circle cx="20.2" cy="11" r="9.2" fill="#ffffff"/>
+            <circle cx="17.6" cy="9.8" r="1.7" fill="#111111"/>
+            <circle cx="22.8" cy="9.8" r="1.7" fill="#111111"/>
+            <ellipse cx="20.2" cy="11.6" rx="1.2" ry="0.8" fill="#111111"/>
+            <path d="M17.8 13.6c0.8 1.4 3.8 1.4 4.8 0" stroke="#111111" stroke-width="1.2" stroke-linecap="round"/>
+          </g>
+          <g>
+            <circle cx="30.2" cy="11" r="9.2" fill="#f26b1d"/>
+            <text x="30.2" y="15.1" font-family="'Inter', sans-serif" font-weight="700" font-size="12.5" fill="#ffffff" text-anchor="middle">e</text>
+          </g>
+        </svg>
+        <span>1,200+ AI engineering teams onboarded</span>
+      </div>
+    </footer>
+  </div>
+
+  <!-- Interactive Live Console Overlay for LangSmith Lite -->
+  <div class="console-overlay" id="console-modal" aria-hidden="true">
+    <div class="console-card">
+      <div class="console-header">
+        <div style="display:flex; align-items:center; gap:10px;">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="white">
+            <g transform="rotate(-30 12 12)">
+              <circle cx="7.3" cy="3.2" r="1.45" />
+              <rect x="5.5" y="4.7" width="3.6" height="14.6" rx="1.8" />
+              <rect x="14.9" y="4.7" width="3.6" height="14.6" rx="1.8" />
+              <circle cx="16.7" cy="20.8" r="1.45" />
+            </g>
+          </svg>
+          <span style="font-weight:600; font-size:15px; letter-spacing:-0.02em;">LangSmith Lite Console</span>
+          <span class="status-badge" style="margin-left: 8px;">● Live Observability</span>
+        </div>
+        <button class="console-close" id="close-console" aria-label="Close console">✕</button>
+      </div>
+
+      <div class="console-body">
+        <!-- Live Metrics Bar -->
+        <div class="metric-grid">
+          <div class="metric-box">
+            <span class="metric-label">Active Datasets</span>
+            <span class="metric-val" id="m-datasets">5</span>
+          </div>
+          <div class="metric-box">
+            <span class="metric-label">Total Eval Runs</span>
+            <span class="metric-val" id="m-runs">24</span>
+          </div>
+          <div class="metric-box">
+            <span class="metric-label">Pass Rate</span>
+            <span class="metric-val" style="color:#34d399;">98.2%</span>
+          </div>
+          <div class="metric-box">
+            <span class="metric-label">Avg P95 Latency</span>
+            <span class="metric-val" style="color:#38bdf8;">412ms</span>
+          </div>
+        </div>
+
+        <!-- Recent Runs & Datasets Table -->
+        <div style="display:flex; flex-direction:column; gap:10px;">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <span style="font-size:14px; font-weight:600; color:#fff;">Recent Evaluation Runs &amp; Test Suites</span>
+            <span style="font-size:12px; color:#9a9a9a;">Automated Continuous Guardrails</span>
+          </div>
+          <div class="table-container">
+            <table class="console-table">
+              <thead>
+                <tr>
+                  <th>Run Name / Model</th>
+                  <th>Dataset Target</th>
+                  <th>Exact Match</th>
+                  <th>F1 Score</th>
+                  <th>Latency</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody id="runs-tbody">
+                <tr>
+                  <td style="font-weight:500;">Claude-3.7-Sonnet-Candidate</td>
+                  <td>RAG Customer QA</td>
+                  <td>0.94</td>
+                  <td>0.96</td>
+                  <td>385ms</td>
+                  <td><span class="status-badge">Completed</span></td>
+                </tr>
+                <tr>
+                  <td style="font-weight:500;">GPT-4o-Mini-Baseline</td>
+                  <td>Financial Entity Extraction</td>
+                  <td>0.89</td>
+                  <td>0.91</td>
+                  <td>290ms</td>
+                  <td><span class="status-badge">Completed</span></td>
+                </tr>
+                <tr>
+                  <td style="font-weight:500;">Llama-3.3-70B-Instruct</td>
+                  <td>SQL Schema Synthesis</td>
+                  <td>0.92</td>
+                  <td>0.95</td>
+                  <td>510ms</td>
+                  <td><span class="status-badge">Completed</span></td>
+                </tr>
+                <tr>
+                  <td style="font-weight:500;">Gemini-2.0-Flash-Eval</td>
+                  <td>Multi-Turn Agent Dialogues</td>
+                  <td>0.96</td>
+                  <td>0.98</td>
+                  <td>220ms</td>
+                  <td><span class="status-badge">Completed</span></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (() => {
+      // 1. Entrance animation registration & .is-in resolution
+      const appears = document.querySelectorAll('.appear, .hero-photo');
+      appears.forEach(el => {
+        el.addEventListener('animationend', () => {
+          el.classList.add('is-in');
+        }, { once: true });
+      });
+
+      // 2. rAF fallback: ensure elements show even if CSS animations fail
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          let anyRunning = false;
+          appears.forEach(el => {
+            if (typeof el.getAnimations === 'function') {
+              const anims = el.getAnimations();
+              if (anims && anims.some(a => a.playState === 'running' || a.playState === 'finished')) {
+                anyRunning = true;
+              }
+            }
+          });
+          if (!anyRunning) {
+            appears.forEach(el => el.classList.add('is-in'));
+          }
+        });
+      });
+
+      // 3. Burger Navigation logic
+      const burger = document.querySelector('.burger');
+      const nav = document.getElementById('site-nav');
+      const backdrop = document.querySelector('.menu-backdrop');
+
+      function openMenu() {
+        document.body.classList.add('menu-open');
+        if (burger) {
+          burger.setAttribute('aria-expanded', 'true');
+          burger.setAttribute('aria-label', 'Close menu');
+        }
+      }
+
+      function closeMenu() {
+        document.body.classList.remove('menu-open');
+        if (burger) {
+          burger.setAttribute('aria-expanded', 'false');
+          burger.setAttribute('aria-label', 'Open menu');
+        }
+      }
+
+      if (burger) {
+        burger.addEventListener('click', () => {
+          if (document.body.classList.contains('menu-open')) {
+            closeMenu();
+          } else {
+            openMenu();
+          }
+        });
+      }
+
+      if (backdrop) backdrop.addEventListener('click', closeMenu);
+
+      if (nav) {
+        nav.querySelectorAll('a').forEach(link => {
+          link.addEventListener('click', closeMenu);
+        });
+      }
+
+      // 4. Console Modal interactive controls
+      const consoleModal = document.getElementById('console-modal');
+      const closeConsoleBtn = document.getElementById('close-console');
+      const openConsoleTriggers = document.querySelectorAll('.js-open-console');
+
+      function openConsole() {
+        document.body.classList.add('console-open');
+        if (consoleModal) consoleModal.setAttribute('aria-hidden', 'false');
+        fetchLiveTelemetry();
+      }
+
+      function closeConsole() {
+        document.body.classList.remove('console-open');
+        if (consoleModal) consoleModal.setAttribute('aria-hidden', 'true');
+      }
+
+      openConsoleTriggers.forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          e.preventDefault();
+          openConsole();
+        });
+      });
+
+      if (closeConsoleBtn) closeConsoleBtn.addEventListener('click', closeConsole);
+
+      if (consoleModal) {
+        consoleModal.addEventListener('click', (e) => {
+          if (e.target === consoleModal) closeConsole();
+        });
+      }
+
+      // Fetch live data from backend if running
+      async function fetchLiveTelemetry() {
+        try {
+          const [dsRes, runsRes] = await Promise.all([
+            fetch('http://127.0.0.1:8000/api/datasets').catch(() => null),
+            fetch('http://127.0.0.1:8000/api/runs').catch(() => null)
+          ]);
+          if (dsRes && dsRes.ok) {
+            const datasets = await dsRes.json();
+            const mDs = document.getElementById('m-datasets');
+            if (mDs && datasets.length) mDs.textContent = datasets.length;
+          }
+          if (runsRes && runsRes.ok) {
+            const runs = await runsRes.json();
+            const mRuns = document.getElementById('m-runs');
+            if (mRuns && runs.length) mRuns.textContent = runs.length;
+            if (runs.length) {
+              const tbody = document.getElementById('runs-tbody');
+              if (tbody) {
+                tbody.innerHTML = runs.slice(0, 5).map(r => `
+                  <tr>
+                    <td style="font-weight:500;">${r.name || 'Unnamed Run'}</td>
+                    <td>${r.dataset_name || 'Production Eval'}</td>
+                    <td>${r.metrics?.exact_match !== undefined ? (r.metrics.exact_match * 100).toFixed(1) + '%' : '94.2%'}</td>
+                    <td>${r.metrics?.f1 !== undefined ? (r.metrics.f1 * 100).toFixed(1) + '%' : '96.0%'}</td>
+                    <td>${r.metrics?.latency_p95 ? r.metrics.latency_p95 + 'ms' : '380ms'}</td>
+                    <td><span class="status-badge">${r.status || 'Completed'}</span></td>
+                  </tr>
+                `).join('');
+              }
+            }
+          }
+        } catch {}
+      }
+
+      // 5. Global Escape & resize listeners
+      window.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+          if (document.body.classList.contains('console-open')) closeConsole();
+          if (document.body.classList.contains('menu-open')) closeMenu();
+        }
+      });
+
+      const mql = window.matchMedia('(min-width: 901px)');
+      mql.addEventListener('change', (e) => {
+        if (e.matches) closeMenu();
+      });
+    })();
+  </script>
+</body>
+</html>
